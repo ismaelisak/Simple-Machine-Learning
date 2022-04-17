@@ -1,0 +1,142 @@
+---
+title: 'Prooject #1 (Iris dataset)'
+author: "Ismael Isak"
+date: 03/15/2022
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(datasets)
+library(ellipse)
+library(kernlab)
+library(randomForest)
+```
+
+## Introduction
+
+This first project is going to be going through the basics of loading a dataset, validation, summarizing it, visualizing it, and finally building predictive models.
+
+I will be using plain language and explaining each step as I go along. I won't be including how to install R or R Studio but this project should be enough for the basics of machine learning.
+
+## Loading the data
+
+First I will load the data from the dataset package in R. I will be using the Iris dataset, which is a well known dataset created by Edgar Anderson (1897-1969). He was an American botanist who revolutionized is field by introducing botanical genetics in hihs 1941 book Introgressive Hybridization. His work on the Iris species along with statistician R.A. Fisher helped develop examples of statistical classification which is an important part of machine learning.
+
+```{R}
+data("iris")
+dataset <- iris
+```
+
+## Validation and training
+
+```{R}
+# create a list of 80% of the rows in the original dataset we can use for training
+validation_index <- createDataPartition(dataset$Species, p=0.80, list=FALSE)
+
+# select 20% of the data for validation
+validation <- dataset[-validation_index,]
+
+# use the remaining 80% of data to training and testing the models
+dataset <- dataset[validation_index,]
+
+dim(dataset)
+```
+
+## Exploring and summarizing the data
+
+```{R}
+#list the classes in dataset
+sapply(dataset, class)
+
+#looking through the dataset
+head(dataset)
+
+#Going through the levels of dataset classes
+levels(dataset$Species)
+
+#Summarize the class distribution
+percentage <- prop.table(table(dataset$Species))*100
+cbind(freq=table(dataset$Species), percentage=percentage)
+
+#Summarize the attributes of the distributions
+summary(dataset)
+```
+
+## Visualizing the data
+
+```{R}
+#Univariate plot analysis using boxplots
+x <- dataset[,1:4]
+y <- dataset[,5]
+
+par(mfrow=c(1,4))
+for(i in 1:4){
+  boxplot(x[,i], main=names(iris)[i])
+}
+par(mfrow = c(1, 2))
+
+#Analyzing the class distribution of the data
+plot(y)
+
+#Multivariate plot analysis using ellipse and boxplots
+featurePlot(x,y,plot = "ellipse")
+featurePlot(x,y, plot = "box")
+
+#Density plots for each attribute by class value
+scales <- list(x=list(relation="free"), y=list(relation="free"))
+featurePlot(x=x, y=y, plot="density", scales=scales)
+```
+
+## Creating the predictive models
+
+```{R}
+#Run algorithms using 10-fold cross validation
+control <- trainControl(method="cv", number=10)
+
+# 1)Linear algorithms
+fit.lda <- train(Species~., data=dataset, method="lda", metric="Accuracy"
+                 , trControl=control)
+
+# 2)Nonlinear algorithms
+# CART
+fit.cart <- train(Species~., data=dataset, method="rpart", metric="Accuracy", 
+                  trControl=control)
+
+# kNN
+fit.knn <- train(Species~., data=dataset, method="knn", metric="Accuracy", 
+                 trControl=control)
+
+# 3)Advanced algorithms
+# SVM
+fit.svm <- train(Species~., data=dataset, method="svmRadial", metric="Accuracy",
+                 trControl=control)
+
+# Random Forest
+fit.rf <- train(Species~., data=dataset, method="rf", metric="Accuracy",
+                trControl=control)
+```
+
+## Selecting the best model and summarizing the results
+
+```{R}
+#Summarize accuracy of models
+results <- resamples(list(lda=fit.lda, cart=fit.cart, knn=fit.knn, svm=fit.svm,
+                          rf=fit.rf))
+summary(results)
+
+#Compare accuracy of models
+dotplot(results)
+
+#Summarizing the best model
+print(fit.lda)
+```
+
+## Making predictions based on the best model
+
+```{R}
+#Estimate skill of LDA on the validation dataset
+predictions <- predict(fit.lda, validation)
+confusionMatrix(predictions, validation$Species)
+```
