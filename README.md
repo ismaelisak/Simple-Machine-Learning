@@ -1,4 +1,4 @@
-# solid-barnacle
+# Simple-Machine-Learning
 
 Simple Machine Learning Examples
 
